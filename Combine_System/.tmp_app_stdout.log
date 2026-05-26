@@ -1,0 +1,9 @@
+Using OpenCV VideoCapture...
+Web streaming started on http://0.0.0.0:9547
+Received /start command
+System started via /start -> auto calibrating...
+[CALIB] Calibrating... 9s remaining
+[CALIB] Calibrating... 8s remaining
+[CALIB] Calibrating... 7s remaining
+Received /end command
+System stopped via /end -> back to IDLE.

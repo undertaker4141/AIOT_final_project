@@ -1,0 +1,7 @@
+interface:
+  display_name: "Chat Log Maintainer"
+  short_description: "Maintain structured project conversation logs."
+  default_prompt: "Use $chat-log-maintainer to update chat_log.md with the latest project conversation summary."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,26 @@
+[project]
+name = "combine-system"
+version = "0.1.0"
+description = "Combined edge-only dynamic posture and attention monitoring system."
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "mediapipe==0.10.14",
+  "opencv-python>=4.8.0",
+  "numpy>=1.23.0",
+  "requests>=2.33.1",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.0.0",
+]
+
+[project.scripts]
+combine-system = "combine_system.app:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
