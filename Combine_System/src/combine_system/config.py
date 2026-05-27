@@ -10,9 +10,9 @@ class CombineConfig:
     fps_limit: float = 30.0
     web_port: int = 9547
 
-    # Alert API URLs
-    alert_distraction_url: str = "https://controller.nchuit.com/notfocus"
-    alert_posture_url: str = "https://controller.nchuit.com/badposture"
+    # Alert API URLs (指向本地 Node B mock，實體 ESP32 部署時再改回外部 URL)
+    alert_distraction_url: str = "http://localhost:9549/notfocus"
+    alert_posture_url: str = "http://localhost:9549/badposture"
 
     # Calibration settings (統一為 10 秒)
     calibration_seconds: float = 10.0
@@ -52,3 +52,7 @@ class CombineConfig:
     # Long-term posture metrics
     posture_long_term_window_frames: int = 200
     posture_long_term_distraction_threshold: int = 80
+
+    # WebSocket and persistence
+    ws_port: int = 9548
+    db_path: str = "events.db"

@@ -7,3 +7,4 @@ Requires-Dist: mediapipe==0.10.14
 Requires-Dist: opencv-python>=4.8.0
 Requires-Dist: numpy>=1.23.0
 Requires-Dist: requests>=2.33.1
+Requires-Dist: websockets>=12.0

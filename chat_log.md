@@ -12,6 +12,272 @@
 
 ## Session Log
 
+### 2026-05-27 Session 012
+
+**Request**  
+根據目前修復完後的狀況更新 README.md。
+
+**Key Decisions**  
+- 對齊所有已修復的實際行為，不保留過時描述。
+
+**Files Updated**  
+- `README.md`
+
+**Summary of Changes**  
+- Node B 端點表格：新增 `/test?type=distraction`、`/test?type=posture`；`/status` 說明更新為新結構（含 counts、last_alert）；自動刷新從 5 秒改為 2 秒。
+- `config.py` 範例中 alert URL 改為 `http://localhost:9549/...`（預設已指向本地 Node B）。
+- Node C 說明改為中文 UI 描述，加入校準 banner 與連線狀態提示說明。
+- 使用流程：改為三節點依序啟動（Node B → Node A → Node C）；加入 Node B 測試方式說明；按鈕文字改為「開始」/「結束」。
+- ESP32 接線：修正告警 URL（舊版誤寫為 9547，正確為 Node B 的 9549）；加入 `config.py` 修改範例。
+- 技術棧：`http.server` 改為 `ThreadingHTTPServer`（串流修復後的實際實作）。
+- 新增「Windows 開發注意事項」區塊：重啟提醒、port 衝突排查、ANSI 色彩終端需求。
+
+**Validation**  
+- 人工比對 README 與目前各檔案實際內容，確認一致。
+
+**Open Follow-ups**  
+- 下一階段：Node A 部署到 Raspberry Pi（systemd service）。
+
+
+
+### 2026-05-27 Session 011
+
+**Request**  
+Node B 無法使用（瀏覽器顯示 ERR_CONNECTION_REFUSED），進行 debug QA。
+
+**Root Cause Analysis**  
+1. **舊版 process 殘留**：Node B 跑的是修改前的舊版 `server.py`（英文 HTML），因為從未重啟。
+2. **雙重 process 衝突**：port 9549 同時有兩個 Python process 在 LISTENING（PID 34360、45260），Windows `SO_REUSEADDR` 允許 bind 但請求隨機分配，造成行為不穩定。
+3. **`UnicodeEncodeError: 'gbk'`（主要 bug）**：`_log_alert()` 的 `print()` 含有 Unicode emoji `⚠`（`⚠`），Windows terminal 預設 GBK 編碼無法編碼此字元，handler 拋出例外後連線被強制關閉，導致所有告警端點（`/notfocus`、`/badposture`、`/test`）全部回傳連線中斷。
+
+**Fixes Applied**  
+- `Node_B/src/node_b/server.py`：
+  - 頂部加入 `io.TextIOWrapper` 強制 stdout/stderr 為 UTF-8（`errors='replace'` 防止後續任何 Unicode 字元造成 crash）
+  - 移除 `print()` 中的 `⚠` emoji，改為純 ASCII `!!`
+  - 移除 HTML 按鈕中的 `🔴`/`🟡` emoji（f-string 在 GBK terminal 同樣危險）
+  - 新增 `import io, sys`
+
+**Process Cleanup**  
+- 手動 kill 舊版 PID 34360、45260，確保 port 9549 只有一個 process。
+
+**Validation**  
+- `GET /test?type=distraction` → 200，回傳「[測試] 已手動觸發：分心警報」
+- `GET /test?type=posture` → 200，回傳「[測試] 已手動觸發：坐姿不良警報」
+- `GET /status` → 200，JSON 含 `counts: {distraction:1, posture:1}` 與 `last_alert` 時間戳
+- `GET /` → 200，HTML 含中文標題「Node B — 警報監控」
+
+**Open Follow-ups**  
+- 每次修改 Node B 後需手動重啟（`python src/node_b/server.py`），建議後續加入啟動腳本統一管理三個 node。
+- 下一階段：Node A 部署到 Raspberry Pi（systemd service）。
+
+
+
+### 2026-05-27 Session 010
+
+**Request**  
+Node B 難以確認是否正常運作，改成更明顯的 mock 方式方便測試。
+
+**Key Decisions**  
+- `config.py` 的 `alert_distraction_url` / `alert_posture_url` 從外部 URL 改指向本地 `http://localhost:9549/notfocus` 與 `http://localhost:9549/badposture`，讓 Node A 的告警直接打到 Node B，串接可即時驗證。
+- Node B 新增 `/test?type=distraction` 與 `/test?type=posture` 端點，可在瀏覽器直接點擊手動觸發，不需等 Node A 真的觸發告警。
+- 首頁加入兩個大型計數器（分心 / 坐姿不良各一），顯示累計次數與最後觸發時間，一眼就能確認是否有收到告警。
+- console 輸出改為大框線 + BOLD 彩色 + terminal bell，告警發生時視覺聽覺都明顯。
+- `/status` 端點回傳結構改為 `{counts, last_alert, log}`，方便程式化查詢。
+- 頁面自動刷新從 5 秒縮短為 2 秒，計數器幾乎即時更新。
+
+**Files Updated**  
+- `Combine_System/src/combine_system/config.py` — alert URL 改指向本地 Node B
+- `Node_B/src/node_b/server.py` — 全面強化：計數器、大字 banner、`/test` 端點、2 秒自動刷新、terminal bell、`/status` 結構化回應
+
+**Validation**  
+- `ast.parse()` 語法檢查通過。
+- 測試流程：啟動 Node B → 瀏覽器開啟 `http://localhost:9549/` → 點擊「手動觸發：分心」→ 計數器 +1，console 出現大框線警報，即可確認 Node B 正常。
+- Node A 啟動後觸發告警時，同樣會在 Node B 頁面看到計數增加。
+
+**Open Follow-ups**  
+- 實體 ESP32 部署時，將 `config.py` 的 alert URL 改回外部 URL 或 ESP32 IP。
+- 下一階段：Node A 部署到 Raspberry Pi（systemd service）。
+
+
+
+### 2026-05-27 Session 009
+
+**Request**  
+將前端頁面（Node C）與後端警報伺服器（Node B）所有顯示文字改為中文，方便閱讀。
+
+**Key Decisions**  
+- 狀態值（`idle`、`focused` 等）為後端 enum 的英文 key，不修改資料層，改在前端建立對照表（`STATE_LABELS`、`ATTENTION_ZH`、`REASON_ZH`）做顯示轉換，保持資料與顯示分離。
+- 坐姿問題原因（`Forward Head`、`Slouching` 等）同樣在 `PosturePanel` 建立 `REASON_ZH` 對照表，`translateReasons()` 函式負責轉換。
+- Node B 的 `_TYPE_ZH` 對照表讓 HTML 頁面顯示中文警報類型，console 輸出也改為中文標籤。
+- 時間格式統一改為 `toLocaleTimeString('zh-TW')`。
+
+**Files Updated**  
+- `Node_C/src/components/StatusBadge.tsx` — 加入 `STATE_LABELS` 對照表，badge 顯示中文
+- `Node_C/src/components/GazeTracker.tsx` — 標題「視線追蹤」
+- `Node_C/src/components/AttentionPanel.tsx` — 所有標籤中文化（俯仰角、偏航角、翻滾角、眼睛開合度、離開專注區時間、對應區域、佇列大小、分心率）
+- `Node_C/src/components/PosturePanel.tsx` — 標籤中文化 + `REASON_ZH` 坐姿原因對照表
+- `Node_C/src/components/VideoStream.tsx` — 「串流無法連線」、「重試」
+- `Node_C/src/components/ControlButtons.tsx` — 「開始」、「結束」、「啟動中…」、「停止中…」、錯誤訊息中文化
+- `Node_C/src/pages/Dashboard.tsx` — 頁首、連線狀態、校準 banner、最後更新時間全部中文化
+- `Node_C/src/pages/History.tsx` — 篩選條件、圖表標題、表格欄位、分頁按鈕、空資料提示全部中文化；加入 `ATTENTION_ZH` 對照表
+- `Node_B/src/node_b/server.py` — HTML 頁面標題、表格欄位、console 輸出改為中文；加入 `_TYPE_ZH` 對照表
+
+**Validation**  
+- `npm run build` 0 TypeScript 錯誤，594 modules，build 通過。
+
+**Open Follow-ups**  
+- 下一階段：Node A 部署到 Raspberry Pi（systemd service）。
+
+
+
+### 2026-05-27 Session 008
+
+**Request**  
+修正 Combine_System 串流卡住的 bug：不切換視窗刷新就會卡死，導致系統當機。
+
+**Key Decisions**  
+- 根本原因：`HTTPServer` 是單執行緒，`/stream.mjpg` 的無限迴圈永遠佔用唯一的 handler 執行緒，所有其他請求（`/start`、`/end`、`/api/status`）全部被阻塞，直到串流連線中斷才解除。
+- 修法一：`HTTPServer` → `ThreadingHTTPServer`，每個連線各自在獨立執行緒中處理，串流不再鎖死整個 server。
+- 修法二：移除 `time.sleep(0.05)` polling，改用 `threading.Condition`（`_cond`）：`update_frame()` 每次寫入新 frame 後呼叫 `notify_all()`，streaming handler 以 `wait(timeout=2.0)` 阻塞等待，有新 frame 才推送，無 frame 時不佔 CPU，timeout 防止永久 hang。
+- 同時移除舊的 `lock = threading.Lock()`，統一由 `_cond`（內建 lock）保護 `frame_bytes`。
+
+**Files Updated**  
+- `Combine_System/src/combine_system/app.py` — `HTTPServer` → `ThreadingHTTPServer`；`lock` → `_cond`；streaming loop 改用 `_cond.wait()`；`update_frame` 改用 `_cond.notify_all()`
+
+**Summary of Changes**  
+- 串流連線現在在獨立執行緒中運行，不再阻塞 `/start`、`/end`、`/api/status` 等端點。
+- 串流推送改為事件驅動（Condition），不再每 50ms 輪詢，CPU 使用率降低，延遲更低。
+- 新 USB 鏡頭（樹莓派）接入後此修正同樣有效，不依賴鏡頭品質。
+
+**Validation**  
+- `ast.parse()` 語法檢查通過。
+- 邏輯驗證：`ThreadingHTTPServer` 為 Python stdlib 標準類別，`threading.Condition.notify_all()` / `wait()` 為標準同步原語，無外部依賴。
+- 完整端到端驗證需在有攝影機的環境執行（Windows 開發端或樹莓派）。
+
+**Open Follow-ups**  
+- 建議在樹莓派 + USB 鏡頭環境實測串流穩定性。
+- 下一階段：Node A 部署到 Raspberry Pi（systemd service）。
+
+
+
+### 2026-05-27 Session 007
+
+**Request**  
+對整個系統進行深度 QA（系統層 + UI 層），要求在 Windows 開發端 demo 全部功能無誤後再進入下一階段（樹莓派 / 實體 ESP32 / 生產部署）。本次聚焦於修復所有已知 bug，確保三節點串接可正常運作。
+
+**Key Decisions**  
+- 修復優先順序：先修 Node A 的 MJPEG 協定錯誤（影響影像串流）與事件缺失（IDLE/CALIBRATING 無事件導致儀表板空白），再修 WebSocket 啟動競爭，最後修 Node C UI 邏輯問題。
+- WS 啟動競爭改用 `threading.Event(_loop_ready)` 同步：asyncio thread 啟動後設 `_loop_ready.set()`，`start()` 函式以 `_loop_ready.wait()` 阻塞直到 server ready 才啟動 bridge thread，徹底消除啟動期間事件遺失。
+- ControlButtons 加入 `systemState` prop，calibrating/tracking 時禁用 Start 按鈕，並顯示 fetch 失敗的紅色錯誤訊息。
+- Dashboard 加入「Connecting…」黃色 banner 與「Calibrating…」倒數計時青色 banner，秒數來自 CALIBRATING 事件的 `seconds_outside_zone` 欄位。
+- History 圖表 X 軸改為固定最多 8 個標籤（`interval = floor(len/8)`），避免大量資料點時標籤重疊。
+
+**Files Updated**  
+- `Combine_System/src/combine_system/ws_server.py` — 加入 `_loop_ready` Event，修正啟動競爭
+- `Node_C/src/components/ControlButtons.tsx` — state-aware 禁用、loading 文字、fetch 錯誤顯示
+- `Node_C/src/pages/Dashboard.tsx` — 傳遞 systemState 給 ControlButtons、加入 Connecting/Calibrating banner
+- `Node_C/src/pages/History.tsx` — X 軸 interval 動態計算，最多 8 標籤
+
+**Summary of Changes**  
+- Node A app.py（前次 session）已修正 MJPEG raw bytes、IDLE heartbeat、CALIBRATING progress event。
+- ws_server.py 修正 bridge 在 loop 尚未就緒前就開始發送事件的競爭問題。
+- Node C Dashboard 在三種系統狀態（connecting / calibrating / tracking）下都有明確的視覺反饋。
+- ControlButtons 防止在已啟動時重複點擊 Start，並顯示錯誤訊息。
+
+**Validation**  
+- `npm run build` 0 TypeScript 錯誤，594 modules，build 通過。
+- `curl http://localhost:9549/status` → 回傳 JSON 告警記錄（Node B 運作中）。
+- `curl http://localhost:9547/api/status` → 回傳完整 TRACKING 事件 JSON，包含 head_pose、eye_state、posture_metrics。
+- Node A 實際以攝影機運行，`/api/status` 顯示 `tracking` + `focused`，確認事件流正常。
+
+**Open Follow-ups**  
+- 下一階段：Node A 部署到 Raspberry Pi（systemd service）
+- 下一階段：實體 ESP32 韌體（訂閱 `/notfocus`、`/badposture` URL）
+- 下一階段：Node C 生產部署（`npm run build` + nginx 或 serve dist/）
+- Node C chunk size 超過 500KB（recharts），可後續用 dynamic import 拆分（非阻塞性問題）
+
+
+
+### 2026-05-27 Session 006
+
+**Request**  
+對現有整個系統進行詳細測試，確保功能完整性，撰寫 README.md，並規劃下一步（Node A 上樹莓派、實體 ESP32、電腦端網頁顯示）。
+
+**Key Decisions**  
+- 測試策略：靜態分析 + 模組單元測試 + 端到端整合測試（不需攝影機）。
+- 發現並修正兩個 bug：`state_machine.py` 缺少 `Any` import；`db.query_history` 在 db 檔案不存在時會 crash（改為回傳空陣列）。
+- README.md 以繁體中文撰寫，涵蓋架構圖、快速開始、使用流程、API 參考、部署說明。
+
+**Files Updated**  
+- `Combine_System/src/combine_system/state_machine.py` — 補上 `Any` import
+- `Combine_System/src/combine_system/db.py` — `query_history` 加入 db 不存在的 graceful fallback
+- `README.md` — 新建
+
+**Summary of Changes**  
+- 執行 7 項測試全部通過：event_bus、db 寫入/查詢、ws_server 端到端、HTTP API 端點、Node B 三個端點、Node C TypeScript build。
+- 修正 `state_machine.py` 的 `Any` 未 import 問題（會在 Python 3.11 嚴格模式下 NameError）。
+- 修正 `db.query_history` 在 db 尚未建立時的 OperationalError。
+
+**Validation**  
+- `event_bus` publish/subscribe/unsubscribe：OK
+- `db` init + writer thread + query（15 筆）：OK
+- `ws_server` WebSocket 端到端（publish → client recv）：OK
+- `api_handler` /api/status + /api/history：OK
+- Node B /notfocus + /badposture + /status：OK
+- Node C `npm run build`：OK（0 TypeScript 錯誤）
+- `query_history` on missing db：OK（回傳 []）
+
+**Open Follow-ups**  
+- 下一步：Node A 部署到 Raspberry Pi（systemd service）
+- 下一步：實體 ESP32 韌體（Arduino/MicroPython，訂閱告警 URL）
+- 下一步：Node C 生產部署（`npm run build` + nginx 或直接 serve dist/）
+
+
+
+### 2026-05-26 Session 005
+
+**Request**  
+根據 `spec.md` 開發完整套系統，包含 Node A 事件輸出層、Node A 歷史紀錄持久化、Node B mock server、Node C React 儀表板。
+
+**Key Decisions**  
+- Node A 新增 WebSocket server（port 9548）以 asyncio + `websockets` 庫廣播 `SystemEvent` JSON；透過 `event_bus.py` 解耦主迴圈與所有消費者。
+- Node A 新增 SQLite 持久化（`events.db`），以獨立 daemon thread 批次寫入，每 10 筆或 5 秒 commit 一次。
+- Node A 新增 `/api/status`（最新事件 JSON）與 `/api/history`（SQLite 查詢）REST 端點，並加入 CORS headers。
+- Node B 以純 stdlib Python HTTP server 模擬 ESP32，接收 `/notfocus` 與 `/badposture` 告警，以 ANSI 彩色輸出模擬 LED/蜂鳴器，提供 `/status` 與 `/` 頁面。
+- Node C 使用 Vite + React 18 + TypeScript + Tailwind CSS + recharts；Vite dev proxy 解決所有 CORS 問題（`/api`、`/ws`、`/stream.mjpg`、`/start`、`/end` 全部代理到 Node A）。
+- WebSocket threading bridge 採用 `loop.call_soon_threadsafe(q.put_nowait, event)` 模式，避免阻塞 asyncio event loop。
+
+**Files Updated**  
+- `Combine_System/pyproject.toml` — 新增 `websockets>=12.0`
+- `Combine_System/src/combine_system/config.py` — 新增 `ws_port`, `db_path` 欄位
+- `Combine_System/src/combine_system/app.py` — 加入 event_bus.publish、ws_server.start、db.start、新 API 路由、CORS headers
+- `Combine_System/src/combine_system/event_bus.py` — 新建
+- `Combine_System/src/combine_system/ws_server.py` — 新建
+- `Combine_System/src/combine_system/db.py` — 新建
+- `Combine_System/src/combine_system/api_handler.py` — 新建
+- `Node_B/pyproject.toml` — 新建
+- `Node_B/src/node_b/__init__.py` — 新建
+- `Node_B/src/node_b/server.py` — 新建
+- `Node_C/` — 完整 Vite 專案（vite.config.ts、types.ts、hooks/、components/、pages/）
+
+**Summary of Changes**  
+- Node A 主迴圈在 TRACKING 狀態每幀呼叫 `event_bus.publish(event)`，由 event_bus 分發給 WebSocket broadcaster 與 SQLite writer。
+- Node B 在 port 9549 接收告警，模擬實體提醒輸出。
+- Node C Dashboard 頁面透過 WebSocket 即時顯示專注狀態、姿勢狀態、頭部姿態、視線追蹤、分心率、姿勢率；History 頁面提供日期範圍查詢與 recharts 折線圖。
+
+**Validation**  
+- `uv sync --no-dev` 成功安裝 `websockets==16.0`。
+- `npm run build` 成功，TypeScript 無型別錯誤，Vite build 輸出 587KB JS + 15KB CSS。
+- 未執行端到端整合測試（需要攝影機環境）。
+
+**Open Follow-ups**  
+- 需在有攝影機的環境執行端到端測試，驗證 WebSocket 事件流與 SQLite 寫入。
+- Node B 的告警 URL 目前仍指向 `https://controller.nchuit.com/`；若要改用本地 Node B mock，需修改 `config.py` 的 `alert_distraction_url` 與 `alert_posture_url` 為 `http://localhost:9549/notfocus` 與 `http://localhost:9549/badposture`。
+- Node C production build 的 chunk size 超過 500KB（recharts 造成），可後續用 dynamic import 拆分。
+- Phase 3（Node B/C 串接）與 Phase 4（整體整合驗證）尚未完成。
+
+
+
 ### 2026-05-26 Session 004
 
 **Request**  

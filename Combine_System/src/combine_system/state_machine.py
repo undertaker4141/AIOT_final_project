@@ -3,7 +3,7 @@ from __future__ import annotations
 import collections
 import math
 import numpy as np
-from typing import Iterable, Optional
+from typing import Any, Iterable, Optional
 
 from .config import CombineConfig
 from .models import AttentionState, AttentionZone, HeadPose, EyeState, PostureMetrics, SystemEvent, SystemState

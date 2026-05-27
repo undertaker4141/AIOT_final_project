@@ -1,0 +1,16 @@
+[project]
+name = "node-b"
+version = "0.1.0"
+description = "Node B: HTTP mock server simulating ESP32 alert receiver."
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+node-b = "node_b.server:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
