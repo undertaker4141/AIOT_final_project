@@ -1,2 +1,0 @@
-[console_scripts]
-combine-system = combine_system.app:main
