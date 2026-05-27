@@ -1,0 +1,49 @@
+# ── Python ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+
+# 套件安裝產物
+*.egg-info/
+*.egg
+dist/
+build/
+
+# 虛擬環境
+.venv/
+venv/
+env/
+
+# uv 本地快取（不需跨機器共用）
+.uv-cache/
+
+# ── 執行期產生的資料 ───────────────────────────────────────
+# SQLite 資料庫（執行期產生，不應版控）
+*.db
+*.db-shm
+*.db-wal
+
+# 暫存 log 檔
+*.log
+.tmp_app_stdout.log
+.tmp_app_stderr.log
+
+# 測試用影像
+test_cam_*.jpg
+test_cam_*.png
+
+# ── Node.js ───────────────────────────────────────────────
+node_modules/
+
+# Vite build 輸出
+Node_C/dist/
+Node_C/dist-ssr/
+
+# ── 作業系統 / 編輯器 ─────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.suo
+*.sw?
+.idea/
+.vscode/*
+!.vscode/extensions.json

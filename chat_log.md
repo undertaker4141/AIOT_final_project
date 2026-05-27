@@ -12,6 +12,36 @@
 
 ## Session Log
 
+### 2026-05-27 Session 013
+
+**Request**  
+建立 `.gitignore`，排除不需要推到 git 的檔案，並清理已被 tracked 的產生物。
+
+**Key Decisions**  
+- 根目錄新建 `.gitignore`，涵蓋 Python、Node.js、執行期資料、OS/編輯器產物。
+- 對已被 tracked 的產生物執行 `git rm --cached`，讓 `.gitignore` 規則生效（本地檔案保留）。
+- `uv.lock` 保留版控（確保跨機器依賴一致）；`models/face_landmarker.task` 保留（模型檔需隨 repo 分發）。
+
+**Files Updated**  
+- `.gitignore` — 新建
+
+**Removed from git index (git rm --cached)**  
+- `Combine_System/src/combine_system/__pycache__/` — Python bytecode（12 個 .pyc）
+- `Combine_System/src/combine_system.egg-info/` — pip 安裝產物（5 個檔案）
+- `Combine_System/events.db` — SQLite 執行期資料庫
+- `Combine_System/.tmp_app_stdout.log` / `.tmp_app_stderr.log` — 暫存 log
+- `Combine_System/test_cam_0.jpg` — 測試用影像
+
+**Validation**  
+- `git ls-files --others --exclude-standard` 只剩 `.gitignore` 本身，無其他漏網檔案。
+- `git status` 確認所有產生物已標記為 `D`（待從 index 移除）。
+
+**Open Follow-ups**  
+- 下次 commit 時記得把 `.gitignore` 一起加入（`git add .gitignore`）。
+- 下一階段：Node A 部署到 Raspberry Pi（systemd service）。
+
+
+
 ### 2026-05-27 Session 012
 
 **Request**  
