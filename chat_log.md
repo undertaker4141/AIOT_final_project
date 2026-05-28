@@ -12,6 +12,48 @@
 
 ## Session Log
 
+### 2026-05-29 Session 018
+
+**Request**  
+ESP32 Serial Monitor 顯示數值正常但燈不亮；調整告警閾值。
+
+**Root Cause Analysis**  
+1. 韌體閾值為 `> 0.4f`（嚴格大於），測試數據最高只到 `distract=40%`（= 0.4），剛好不觸發。
+2. `Connection reset by peer` 是正常現象：ESP32 執行告警動作時 `delay()` 阻塞約 600ms，下一輪輪詢重新建立連線，韌體已有重連邏輯，不需修改。
+
+**Key Decisions**  
+- 閾值從 `> 0.4f` 改為 `>= 0.2f`（20%），方便日常使用觸發告警。
+
+**Files Updated**  
+- `Node_B/esp32/aiot_esp32.ino` — 閾值改為 `>= 0.2f`
+- `Node_B/esp32/esp32_node_B/src/main.cpp` — 閾值改為 `>= 0.2f`
+
+**Validation**  
+- 需重新燒錄 ESP32 後驗證。
+
+**Open Follow-ups**  
+- 無。
+
+---
+
+### 2026-05-29 Session 017
+
+**Request**  
+`uv run python -m combine_system.app` 在樹莓派上無輸出直接退出（無 traceback）。
+
+**Root Cause**  
+`app.py` 缺少 `if __name__ == '__main__': sys.exit(main())` 入口。`-m` 執行時 Python 跑完模組頂層程式碼就結束，`main()` 從未被呼叫。`pyproject.toml` 的 `[project.scripts]` 入口點（`combine-system` CLI）可正常呼叫 `main()`，但 `-m` 方式不走這條路。
+
+**Files Updated**  
+- `Node_A_Pi/src/combine_system/app.py` — 補上 `if __name__ == '__main__': sys.exit(main())`
+- `Combine_System/src/combine_system/app.py` — 同步補上
+
+**Validation**  
+- `uv run python -m combine_system.app 2>&1` 在樹莓派上正常啟動，顯示 Web/WebSocket 啟動訊息並持續運行。
+
+**Open Follow-ups**  
+- 無。
+
 ### 2026-05-28 Session 016
 
 **Request**  

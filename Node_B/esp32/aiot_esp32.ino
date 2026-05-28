@@ -195,8 +195,8 @@ void pollNodeA() {
   bool hasPostureMetrics = !doc["posture_metrics"].isNull();
   float postureRatio = hasPostureMetrics ? (doc["posture_metrics"]["posture_ratio"] | 0.0f) : 0.0f;
 
-  bool newDistraction = (distractionRatio > 0.4f);
-  bool newPosture     = (postureRatio > 0.4f);
+  bool newDistraction = (distractionRatio >= 0.2f);
+  bool newPosture     = (postureRatio >= 0.2f);
 
   if (newDistraction && newPosture) {
     alertBoth();
