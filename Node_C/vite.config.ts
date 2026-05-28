@@ -1,17 +1,26 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-export default defineConfig({
-  plugins: [react(), tailwindcss()],
-  server: {
-    port: 5173,
-    proxy: {
-      '/api': { target: 'http://localhost:9547', changeOrigin: true },
-      '/start': { target: 'http://localhost:9547', changeOrigin: true },
-      '/end': { target: 'http://localhost:9547', changeOrigin: true },
-      '/stream.mjpg': { target: 'http://localhost:9547', changeOrigin: true },
-      '/ws': { target: 'ws://localhost:9548', ws: true, changeOrigin: true },
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const host     = env.VITE_NODE_A_HOST      || 'localhost'
+  const httpPort = env.VITE_NODE_A_HTTP_PORT || '9547'
+  const wsPort   = env.VITE_NODE_A_WS_PORT   || '9548'
+  const httpBase = `http://${host}:${httpPort}`
+  const wsBase   = `ws://${host}:${wsPort}`
+
+  return {
+    plugins: [react(), tailwindcss()],
+    server: {
+      port: 5173,
+      proxy: {
+        '/api':        { target: httpBase, changeOrigin: true },
+        '/start':      { target: httpBase, changeOrigin: true },
+        '/end':        { target: httpBase, changeOrigin: true },
+        '/stream.mjpg':{ target: httpBase, changeOrigin: true },
+        '/ws':         { target: wsBase,   ws: true, changeOrigin: true },
+      },
     },
-  },
+  }
 })

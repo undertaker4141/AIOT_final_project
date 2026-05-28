@@ -12,6 +12,35 @@
 
 ## Session Log
 
+### 2026-05-28 Session 015
+
+**Request**  
+Node C 動態配置 Node A IP，方便樹莓派 IP 變動時不需改程式碼。
+
+**Key Decisions**
+- 採用 Vite 環境變數（`.env` 檔）方案：改 IP 只需修改 `.env` 重啟 dev server，不需動程式碼。
+- `vite.config.ts` 改用 `defineConfig(({ mode }) => {...})` 函式形式，以 `loadEnv()` 讀取 `.env`，動態組合 proxy 目標。
+- `.env` 加入 `.gitignore`（含 IP 資訊不外流）；`.env.example` 保留版控作為範本。
+
+**Files Updated**
+- `Node_C/.env` — 新建，預設 `VITE_NODE_A_HOST=localhost`（本機開發用）
+- `Node_C/.env.example` — 新建，範本說明（版控）
+- `Node_C/vite.config.ts` — 改為函式形式，讀取 env 動態設定 proxy 目標
+- `.gitignore` — 新增 `Node_C/.env` 與 `Node_C/.env.local` 排除規則
+
+**Usage**  
+樹莓派部署時，修改 `Node_C/.env`：
+```
+VITE_NODE_A_HOST=192.168.x.x
+```
+重啟 `npm run dev` 即生效，所有 proxy（`/api`、`/start`、`/end`、`/stream.mjpg`、`/ws`）自動指向新 IP。
+
+**Validation**
+- `npm run build` 通過，0 TypeScript 錯誤，594 modules。
+
+**Open Follow-ups**
+- 無。
+
 ### 2026-05-28 Session 014
 
 **Request**  
