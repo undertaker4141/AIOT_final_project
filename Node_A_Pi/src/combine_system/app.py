@@ -410,3 +410,7 @@ def _draw_overlay(frame, event: SystemEvent, zones, config: CombineConfig) -> No
                 y_off += 20
     else:
         cv2.putText(frame, "Posture: No Data", (p_x, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 255), 1)
+
+
+if __name__ == '__main__':
+    sys.exit(main())
