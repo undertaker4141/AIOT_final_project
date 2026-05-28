@@ -12,6 +12,44 @@
 
 ## Session Log
 
+### 2026-05-28 Session 014
+
+**Request**  
+進入下一階段：確認 Node A 是否可直接上樹莓派（若不行則微調），並撰寫 ESP32 韌體（兩顆 LED + 無源蜂鳴器）。
+
+**Key Decisions**
+
+**Node A — 樹莓派相容性評估**
+- 相機偵測邏輯已有三層 fallback（Picamera2 → OpenCV VideoCapture → RPiStreamCamera subprocess），架構上已支援樹莓派。
+- 發現兩個問題需修正：
+  1. `pyproject.toml` 的 `requires-python = ">=3.11,<3.13"` 過於嚴格，Pi OS Bookworm 預裝 3.11 沒問題，但未來版本可能更高，改為 `>=3.11`。
+  2. Linux 上 USB 鏡頭原本直接走 `RPiStreamCamera`（subprocess rpicam-vid），但 USB 鏡頭應走 `cv2.VideoCapture`。修正為：先嘗試 `cv2.VideoCapture`，`isOpened()` 失敗才 fallback 到 `RPiStreamCamera`（CSI 鏡頭用）。
+- 結論：**直接上樹莓派，不需另建版本**，兩個小修正後即可。
+
+**Node B — ESP32 韌體設計**
+- 採用 HTTP 輪詢 `/api/status`（每 3 秒），不需 WebSocket，降低韌體複雜度。
+- 判斷邏輯：`distraction_ratio > 0.4` 觸發分心告警；`posture_ratio > 0.4` 觸發坐姿告警；兩者同時觸發雙重告警。
+- 告警行為：分心 → 紅色 LED 閃 3 次 + 短響 × 2；坐姿 → 黃色 LED 閃 3 次 + 長響；同時 → 交替閃爍 + 雙音。
+- 無源蜂鳴器用 PWM 驅動（`ledcSetup`），分心 2000Hz、坐姿 1500Hz，音調不同方便區分。
+- 加入開機自檢（依序亮燈 + 短響）與 WiFi 連線狀態指示（成功/失敗各有不同 LED 行為）。
+
+**Files Updated**
+- `Combine_System/pyproject.toml` — `requires-python` 放寬為 `>=3.11`
+- `Combine_System/src/combine_system/app.py` — Linux 上 USB 鏡頭優先走 `cv2.VideoCapture`，失敗才 fallback RPiStreamCamera
+- `Node_B/esp32/aiot_esp32.ino` — 新建 ESP32 Arduino 韌體
+- `Node_B/esp32/README.md` — 新建接線說明、燒錄步驟、告警行為表
+
+**Validation**
+- `ast.parse()` 語法檢查：app.py 通過。
+- ESP32 韌體需在實體硬體上燒錄驗證。
+
+**Open Follow-ups**
+- 燒錄前需修改 `aiot_esp32.ino` 頂部的 `WIFI_SSID`、`WIFI_PASSWORD`、`NODE_A_IP`。
+- GPIO 5 在部分 ESP32 板子上是 SPI CLK，若有衝突可改用 GPIO 18 或 GPIO 19。
+- 樹莓派部署：`uv sync --no-dev` 後 `uv run python -m combine_system.app`，建議後續加 systemd service。
+
+
+
 ### 2026-05-27 Session 013
 
 **Request**  

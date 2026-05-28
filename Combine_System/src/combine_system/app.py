@@ -208,14 +208,20 @@ def run(config: CombineConfig) -> int:
         cap = None
     else:
         import platform
-        if platform.system() == "Linux":
-            print("Using RPiStreamCamera (Subprocess fallback)...")
-            cap = RPiStreamCamera(config.frame_width, config.frame_height)
+        cap = cv2.VideoCapture(config.camera_index)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.frame_width)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.frame_height)
+        if not cap.isOpened():
+            cap.release()
+            if platform.system() == "Linux":
+                # Fallback: CSI camera via rpicam-vid subprocess (no Picamera2)
+                print("OpenCV VideoCapture failed, trying RPiStreamCamera subprocess fallback...")
+                cap = RPiStreamCamera(config.frame_width, config.frame_height)
+            else:
+                print("ERROR: Cannot open camera index", config.camera_index, file=sys.stderr)
+                return 1
         else:
-            print("Using OpenCV VideoCapture...")
-            cap = cv2.VideoCapture(config.camera_index)
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.frame_width)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.frame_height)
+            print(f"Using OpenCV VideoCapture (camera index {config.camera_index})...")
 
     estimator = VisionEstimator(config)
     calibration = CalibrationBuffer(config)
