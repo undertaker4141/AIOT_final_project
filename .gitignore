@@ -39,6 +39,9 @@ node_modules/
 Node_C/dist/
 Node_C/dist-ssr/
 
+# ── ESP32 / PlatformIO（含使用者設定，避免憑證外流）────────
+Node_B/esp32/esp32_node_B/
+
 # ── 作業系統 / 編輯器 ─────────────────────────────────────
 .DS_Store
 Thumbs.db
