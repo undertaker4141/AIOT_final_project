@@ -12,6 +12,48 @@
 
 ## Session Log
 
+### 2026-05-28 Session 016
+
+**Request**  
+樹莓派執行 `uv run python -m combine_system.app` 出現 `ValueError: numpy.dtype size changed`，要求 debug 並分出 `Node_A_Pi` 版本。
+
+**Root Cause**  
+`simplejpeg`（`picamera2` 的依賴）是系統套件（`/usr/lib/python3/dist-packages/`），以舊版 numpy（dtype size=88）編譯。uv venv 裝的是新版 numpy（dtype size=96），兩者 C extension ABI 不相容，import 時直接 crash。
+
+`app.py` 的 `sys.path` 注入邏輯把系統 `picamera2` 拉進 venv 環境，觸發衝突。
+
+**Solution**  
+建立 `Node_A_Pi/` 目錄，Pi 版 `app.py` 完全移除 Picamera2 路徑：
+- 優先嘗試 `cv2.VideoCapture`（USB 鏡頭）
+- 失敗才 fallback 到 `RPiStreamCamera`（CSI 鏡頭，rpicam-vid subprocess）
+- 不 import picamera2，不碰系統 simplejpeg，ABI 衝突消失
+
+**Files Created**
+- `Node_A_Pi/src/combine_system/app.py` — Pi 專用版，無 Picamera2
+- `Node_A_Pi/src/combine_system/` — 其餘模組與 Combine_System 相同（calibration, config, models, pose, state_machine, event_bus, ws_server, db, api_handler）
+- `Node_A_Pi/models/face_landmarker.task` — 模型檔（複製）
+- `Node_A_Pi/pyproject.toml` — 無 picamera2 依賴
+- `Node_A_Pi/setup_rpi.sh` — 一鍵安裝腳本（指向 Node_A_Pi 目錄）
+
+**Deployment**  
+```bash
+cd ~/AIOT_final_project/Node_A_Pi
+sudo bash setup_rpi.sh
+```
+或直接執行：
+```bash
+cd ~/AIOT_final_project/Node_A_Pi
+uv sync --no-dev
+uv run python -m combine_system.app
+```
+
+**Validation**  
+- 語法檢查：app.py 無 Picamera2 import，`cap.release()` 統一在 finally 呼叫。
+- 實體驗證需在樹莓派上執行。
+
+**Open Follow-ups**  
+- 無。
+
 ### 2026-05-28 Session 015
 
 **Request**  

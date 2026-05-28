@@ -1,0 +1,27 @@
+[project]
+name = "combine-system-pi"
+version = "0.1.0"
+description = "Node A — 樹莓派專用版（無 Picamera2，避免 simplejpeg numpy ABI 衝突）"
+requires-python = ">=3.11"
+dependencies = [
+  "mediapipe==0.10.14",
+  "opencv-python>=4.8.0",
+  "numpy>=1.23.0",
+  "requests>=2.33.1",
+  "websockets>=12.0",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.0.0",
+]
+
+[project.scripts]
+combine-system = "combine_system.app:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
